@@ -1,0 +1,44 @@
+/backend
+├── app/
+│   ├── main.py                 # App initialization & router registration
+│   ├── core/                   # Global configuration
+│   │   ├── config.py           # Infisical/Env variables
+│   │   ├── database.py         # SQLAlchemy engine & SessionLocal
+│   │   └── security.py         # JWT logic & password hashing
+│   │
+│   ├── modules/                # Domain-specific modules
+│   │   ├── auth/               # Authentication & User Management
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py      # Pydantic models (Login, Register)
+│   │   │   ├── models.py       # User & Profile SQLAlchemy models
+│   │   │   └── services.py     # Auth business logic
+│   │   │
+│   │   ├── kyc/                # KYC & Biometrics (The AI Sandbox Integration)
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py      # OCR & Face Match request/response
+│   │   │   ├── models.py       # KYC Status & Document metadata
+│   │   │   └── services.py     # Calls your ai_lib (EasyOCR, FaceNet)
+│   │   │
+│   │   ├── loans/              # Loan Application & Pre-screening
+│   │   │   ├── router.py
+│   │   │   ├── schemas.py
+│   │   │   ├── models.py
+│   │   │   └── services.py     # Scoring logic & DB persistence
+│   │   │
+│   │   └── documents/          # MinIO Integration
+│   │       ├── router.py
+│   │       ├── services.py     # S3-compatible logic (Upload/Download)
+│   │       └── utils.py        # Encryption helpers for documents
+│   │
+│   └── shared/                 # Reusable utilities
+│       ├── exceptions.py       # Custom ApiError handlers
+│       └── pagination.py       # Database pagination helpers
+│
+├── ai_lib/                     # Your standalone AI library (PyTorch)
+├── migrations/                 # Alembic migrations
+├── docker-compose.yml          # Orchestration (Postgres, MinIO, Redis)
+└── requirements.txt            # Compiled for CUDA 12.5
+
+python -m piptools compile .\requirements.in   
+python -m piptools sync .\requirements.txt     
+python -m uvicorn app.main:app --reload
