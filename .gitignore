@@ -1,0 +1,45 @@
+# =========================
+# Virtual Environments
+# =========================
+venv/
+env/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =========================
+# Environment Variables (Secrets)
+# =========================
+.env
+.env.*
+!.env.example  # Keep this if you create a template file for others
+
+# =========================
+# VS Code / IDEs
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# Python Caches & Bytecode
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+.mypy_cache/
+.pytest_cache/
+
+# =========================
+# Logs and Databases
+# =========================
+*.log
+*.sqlite3
+*.db
+
+# =========================
+# OS Generated Files
+# =========================
+.DS_Store
+Thumbs.db

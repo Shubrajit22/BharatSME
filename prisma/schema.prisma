@@ -1,0 +1,24 @@
+generator client {
+  provider             = "prisma-client-py"
+  recursive_type_depth = 5
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model KycApplication {
+  id                 String   @id @default(uuid())
+  fullName           String
+  email              String   @unique
+  status             String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  panBase64          String?
+  aadhaarFrontBase64 String?
+  aadhaarBackBase64  String?
+  photoBase64        String?
+  signatureBase64    String?
+  attempts           Int      @default(0)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+}
