@@ -45,4 +45,3 @@ python -m piptools sync .\requirements.txt
 ```
 python -m uvicorn app.main:app --reload
 ```
-

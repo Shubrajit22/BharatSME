@@ -1,6 +1,7 @@
 generator client {
   provider             = "prisma-client-py"
   recursive_type_depth = 5
+  enable_experimental_decimal = true
 }
 
 datasource db {
@@ -8,11 +9,48 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// --- Enums ---
+
+enum UserRole {
+  APPLICANT
+  STAFF
+  ADMIN
+}
+
+enum EligibilityStatus {
+  ELIGIBLE
+  INELIGIBLE
+  PENDING
+}
+
+enum PreScreenResult {
+  READY
+  BLOCKED_MISSING_DOCS
+  BLOCKED_INELIGIBLE
+}
+
+// --- Models ---
+
+model User {
+  id           Int              @id @default(autoincrement())
+  username     String           @unique // Stores custom ID like "APPLICANT-1"
+  email        String           @unique
+  password     String
+  fullName     String
+  role         UserRole         @default(APPLICANT)
+  
+  // Bidirectional relation for SMEApplication
+  applications SMEApplication[] 
+  
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+}
+
 model KycApplication {
   id                 String   @id @default(uuid())
   fullName           String
   email              String   @unique
-  status             String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  status             String   @default("PENDING")
   panBase64          String?
   aadhaarFrontBase64 String?
   aadhaarBackBase64  String?
@@ -21,4 +59,23 @@ model KycApplication {
   attempts           Int      @default(0)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
+}
+
+model SMEApplication {
+  id                  String            @id @default(cuid())
+  applicantName       String
+  businessType        String            // e.g. "PROPRIETORSHIP"
+  turnoverBand        String            // e.g. "0-50L"
+  requestedLoanAmount Decimal           @db.Decimal(15, 2)
+  yearsInBusiness     Int
+  eligibilityStatus   EligibilityStatus @default(PENDING)
+  preScreenResult     PreScreenResult   @default(BLOCKED_MISSING_DOCS)
+  lockedByStaff       Boolean           @default(false)
+  
+  // Relationship to User
+  ownerId             Int               
+  user                User              @relation(fields: [ownerId], references: [id])
+  
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
 }

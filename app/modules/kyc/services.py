@@ -63,3 +63,18 @@ async def process_aadhaar_validation(app_id: str, aadhaar_number: str, front_byt
 
 async def update_kyc_status(app_id: str, status: str):
     return await db.kycapplication.update(where={"id": app_id}, data={"status": status})
+
+async def is_user_kyc_verified(user_email: str) -> bool:
+    """
+    Public method for other modules to check verification status.
+    Pluggable services should always return simple, standard types.
+    """
+    kyc_app = await db.kycapplication.find_unique(
+        where={"email": user_email}
+    )
+    # Only return True if explicitly 'APPROVED'
+    return kyc_app is not None and kyc_app.status == "APPROVED"
+
+async def get_kyc_summary(user_email: str):
+    """Returns detailed status if needed for dashboards."""
+    return await db.kycapplication.find_unique(where={"email": user_email})

@@ -42,3 +42,9 @@
 python -m piptools compile .\requirements.in   
 python -m piptools sync .\requirements.txt     
 python -m uvicorn app.main:app --reload
+
+To make your KYC module truly pluggable, you should treat it as an internal "Service Provider." This means other modules (like Loans or Payments) shouldn't care how the KYC is performed; they should only care about the KYC Status for a given user.
+
+In your current architecture, this is achieved by defining a "Public Interface" in your kyc/services.py that other modules can import and use without creating circular dependencies.
+
+For true pluggability, you can create a FastAPI Dependency. This allows you to protect any route in any module simply by adding one line. This replaces the complex @PreAuthorize logic you used in Spring Boot.
