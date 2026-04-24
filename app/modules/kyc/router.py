@@ -1,5 +1,6 @@
 import base64
-from fastapi import APIRouter, UploadFile, Form, File, Depends
+# 1. Added BackgroundTasks here
+from fastapi import APIRouter, UploadFile, Form, File, Depends, BackgroundTasks 
 from app.modules.kyc.schemas import BasicDetails, SubmitKyc
 from app.modules.kyc import services
 
@@ -29,8 +30,19 @@ async def validate_aadhaar(
     back_bytes = await backImage.read()
     return await services.process_aadhaar_validation(applicationId, aadhaarNumber, front_bytes, back_bytes)
 
+# 2. ADDED: The missing photo and signature upload route
+@router.post("/upload-photo-signature")
+async def upload_photo_signature(
+    applicationId: str = Form(...),
+    photo: UploadFile = File(...),
+    signature: UploadFile = File(...)
+):
+    photo_bytes = await photo.read()
+    signature_bytes = await signature.read()
+    return await services.process_photo_signature_upload(applicationId, photo_bytes, signature_bytes)
+
+# 3. UPDATED: Injected BackgroundTasks and pointed to the new service function
 @router.post("/submit")
-async def submit_kyc(data: SubmitKyc):
-    # You can add a quick check here or move the check to services
-    await services.update_kyc_status(data.applicationId, "PENDING")
-    return {"success": True, "status": "PENDING"}
+async def submit_kyc(data: SubmitKyc, background_tasks: BackgroundTasks):
+    # This now passes the background_tasks to your service layer so it can send the email!
+    return await services.finalize_kyc_submission(data.applicationId, background_tasks)
