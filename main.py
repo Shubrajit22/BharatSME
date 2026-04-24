@@ -1,11 +1,11 @@
 import base64
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, UploadFile, Form, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, Form, File, HTTPException, Depends, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from prisma import Prisma
 from services.ai_service import validate_document_with_ai
-from fastapi import FastAPI, UploadFile, Form, File, HTTPException, Depends
+from services.email_service import send_kyc_confirmation_email
 # Initialize Prisma
 db = Prisma()
 
@@ -175,27 +175,42 @@ async def upload_photo_signature(
     )
     
     return {"success": True, "message": "Photo and signature uploaded successfully"}
+# 1. The background processor function is defined FIRST
+async def mock_kyc_processing(application_id: str):
+    import asyncio
+    await asyncio.sleep(5)
+    await db.kycapplication.update(where={"id": application_id}, data={"status": "APPROVED"})
+    print(f"[System] Application {application_id} has been APPROVED.")
+
+
+# 2. Then the submit endpoint is defined BELOW it
 @app.post("/api/kyc/submit")
-async def submit_kyc(data: SubmitKyc):
-    """Finalizes the KYC upload process and sets status to PENDING for processing."""
+async def submit_kyc(data: SubmitKyc, background_tasks: BackgroundTasks):
+    """Finalizes the KYC upload and triggers background processing & emails."""
     
-    # Verify the application exists and has the required files
+    # We MUST fetch the application first so we know who to email!
     application = await db.kycapplication.find_unique(where={"id": data.applicationId})
     if not application:
         raise HTTPException(status_code=404, detail="Application not found")
-        
-    if not application.photoBase64 or not application.signatureBase64:
-        raise HTTPException(status_code=400, detail="Missing photo or signature uploads")
 
-    # Set the status to PENDING
+    # Update status to PENDING
     updated_app = await db.kycapplication.update(
         where={"id": data.applicationId},
         data={"status": "PENDING"}
     )
     
+    # Trigger the simulated processing
+    background_tasks.add_task(mock_kyc_processing, application_id=data.applicationId)
+    
+    # Trigger the email dispatch
+    background_tasks.add_task(
+        send_kyc_confirmation_email, 
+        recipient_email=application.email, 
+        user_name=application.fullName, 
+        application_id=application.id
+    )
+    
     return {"success": True, "status": updated_app.status}
-
-
 @app.get("/api/kyc/status/{application_id}")
 async def get_kyc_status(application_id: str):
     """Endpoint for Next.js frontend to poll the current status."""
