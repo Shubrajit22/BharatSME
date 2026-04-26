@@ -1,28 +1,39 @@
 import os
+import bcrypt
 from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from app.core.database import db
 
-# Settings - In production, these come from your .env / Infisical
-SECRET_KEY = os.getenv("JWT_SECRET", "your-super-secret-key-for-major-project")
+# Settings
+SECRET_KEY = os.getenv("JWT_SECRET", "fallback-secret-for-dev")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
-# Password hashing configuration
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# This tells FastAPI where to look for the token (the /login endpoint)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Checks if the plain password matches the stored hash.
+    Note: We must encode strings to bytes using .encode('utf-8')
+    """
+    return bcrypt.checkpw(
+        plain_password.encode('utf-8'), 
+        hashed_password.encode('utf-8')
+    )
 
-def get_password_hash(password):
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    """
+    Generates a salt and hashes the password.
+    Returns the hash as a string to be stored in PostgreSQL.
+    """
+    # Truncate to 72 chars to avoid the bcrypt limit error
+    pwd_bytes = password[:72].encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
@@ -31,14 +42,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=15)
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """
-    Dependency to get the currently authenticated user from the JWT.
-    Replaces @AuthenticationPrincipal from your Spring Boot project.
-    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -52,7 +58,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
     except JWTError:
         raise credentials_exception
 
-    # Fetch user from Prisma using the username (or ID) stored in JWT 'sub'
+    # Fetch user from Prisma using the username stored in JWT 'sub'
     user = await db.user.find_unique(where={"username": username})
     
     if user is None:

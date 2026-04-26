@@ -3,7 +3,8 @@ uvicorn[standard]
 prisma
 python-multipart
 pydantic
+pydantic[email]
 python-dotenv
 google-generativeai
 python-jose[cryptography]
-passlib[bcrypt]
+bcrypt
