@@ -13,7 +13,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SME Loan & KYC API",
     version="1.0.0",
-    lifespan=lifespan
+    lifespan=lifespan,
+    docs_url="/docs",
 )
 
 app.add_middleware(
