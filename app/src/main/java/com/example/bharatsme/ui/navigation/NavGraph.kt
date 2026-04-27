@@ -1,11 +1,7 @@
 package com.example.bharatsme.ui.navigation
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -21,6 +17,9 @@ import com.example.bharatsme.ui.dashboard.DashboardScreen
 import com.example.bharatsme.ui.dashboard.DashboardViewModel
 import com.example.bharatsme.ui.kyc.KycScreen
 import com.example.bharatsme.ui.kyc.KycViewModel
+import com.example.bharatsme.ui.loans.LoanViewModel
+import com.example.bharatsme.ui.loans.NewLoanScreen
+import kotlinx.coroutines.launch
 
 
 @Composable
@@ -28,13 +27,14 @@ fun NavGraph(
     authRepository: AuthRepository,
     loanRepository: LoanRepository,
     kycRepository: KycRepository,
-    userName: String // Pass this after successful login
+    userName: String,
+    startDestination: Any
 ) {
     val navController = rememberNavController()
 
     NavHost(
         navController = navController,
-        startDestination = Screen.Auth
+        startDestination = startDestination
     ) {
         // --- Authentication Screen ---
         composable<Screen.Auth> {
@@ -50,7 +50,7 @@ fun NavGraph(
                 viewModel = viewModel,
                 onAuthSuccess = {
                     navController.navigate(Screen.Dashboard) {
-                        // Pop Auth screen so user can't go back to login
+
                         popUpTo(Screen.Auth) { inclusive = true }
                     }
                 }
@@ -59,6 +59,8 @@ fun NavGraph(
 
         // --- Dashboard Screen ---
         composable<Screen.Dashboard> {
+            val scope = rememberCoroutineScope() // Needed to call suspend logout()
+
             val viewModel: DashboardViewModel = viewModel(
                 factory = object : ViewModelProvider.Factory {
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -71,7 +73,16 @@ fun NavGraph(
                 userName = userName,
                 viewModel = viewModel,
                 onNavigateToKyc = { navController.navigate(Screen.Kyc) },
-                onNavigateToNewLoan = { navController.navigate(Screen.NewLoan) }
+                onNavigateToNewLoan = { navController.navigate(Screen.NewLoan) },
+                onLogout = {
+                    scope.launch {
+                        authRepository.logout() // Clears TokenManager
+                        navController.navigate(Screen.Auth) {
+                            // Clear the entire backstack so they can't "back" into the dashboard
+                            popUpTo(0) { inclusive = true }
+                        }
+                    }
+                }
             )
         }
 
@@ -92,15 +103,30 @@ fun NavGraph(
                     navController.navigate(Screen.Dashboard) {
                         popUpTo(Screen.Kyc) { inclusive = true }
                     }
-                }
+                },
+                onNavigateBack = { navController.popBackStack() }
             )
         }
 
         // --- New Loan Screen (Placeholder) ---
         composable<Screen.NewLoan> {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("Loan Application coming soon...")
-            }
+            val viewModel: LoanViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return LoanViewModel(loanRepository) as T
+                    }
+                }
+            )
+
+            NewLoanScreen(
+                viewModel = viewModel,
+                onBack = { navController.popBackStack() },
+                onAuthSuccess = {
+                    navController.navigate(Screen.Dashboard) {
+                        popUpTo(Screen.Auth) { inclusive = true }
+                    }
+                }
+            )
         }
     }
 }

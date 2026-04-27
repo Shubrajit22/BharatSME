@@ -21,4 +21,13 @@ class DashboardViewModel(private val repository: LoanRepository) : ViewModel() {
             _uiState.value = repository.getApplications()
         }
     }
+
+    fun evaluateLoan(id: String) {
+        viewModelScope.launch {
+            // Call the evaluate endpoint
+            repository.evaluateLoan(id)
+            // Refresh the dashboard data to show the new status
+            loadDashboardData()
+        }
+    }
 }

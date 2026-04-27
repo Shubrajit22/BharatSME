@@ -5,6 +5,8 @@ import android.net.Uri
 import com.example.bharatsme.data.remote.api.SmeApiService
 import com.example.bharatsme.data.remote.dto.BasicDetails
 import com.example.bharatsme.util.Resource
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -101,6 +103,32 @@ class KycRepository(private val api: SmeApiService, private val context: Context
             }
         } catch (e: Exception) {
             Resource.Error(e.message ?: "Connection error")
+        }
+    }
+
+    suspend fun validatePan(
+        appId: String,
+        panNum: String,
+        panUri: Uri
+    ): Resource<Unit> = withContext(Dispatchers.IO) {
+        try {
+            // 1. Convert the URI to a Multipart Part
+            val panPart = prepareFilePart("file", panUri) ?: return@withContext Resource.Error("Could not process image")
+
+            // 2. Execute the API call
+            val response = api.validatePan(
+                applicationId = appId.toPart(),
+                panNumber = panNum.toPart(),
+                file = panPart
+            )
+
+            if (response.isSuccessful) {
+                Resource.Success(Unit)
+            } else {
+                Resource.Error("PAN validation failed: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Connection error to server")
         }
     }
 }

@@ -64,8 +64,47 @@ class KycViewModel(private val repository: KycRepository) : ViewModel() {
                 frontUri = aadhaarFrontUri.value!!,
                 backUri = aadhaarBackUri.value!!
             )
-            if (result is Resource.Success) moveToNextStep()
+            if (result is Resource.Success<*>) {
+                moveToNextStep()
+            }
             _kycState.value = result
+        }
+    }
+
+    fun submitPan() {
+        viewModelScope.launch {
+            _kycState.value = Resource.Loading()
+            val result = repository.validatePan(
+                appId = applicationId.value,
+                panNum = panNumber.value,
+                panUri = panUri.value!!
+            )
+            if (result is Resource.Success<*>) {
+                moveToNextStep()
+            }
+            _kycState.value = result
+        }
+    }
+
+    fun submitFinalBiometrics() {
+        viewModelScope.launch {
+            _kycState.value = Resource.Loading()
+            val result = repository.uploadBiometrics(
+                appId = applicationId.value,
+                photoUri = selfieUri.value!!,
+                signUri = signatureUri.value!!
+            )
+            if (result is Resource.Success<*>) {
+                _currentStep.value = KycStep.SUBMITTED
+            }
+            _kycState.value = result
+        }
+    }
+
+    fun moveBackStep() {
+        val currentIndex = _currentStep.value.ordinal
+        if (currentIndex > 0) {
+            _currentStep.value = KycStep.entries[currentIndex - 1]
         }
     }
 }

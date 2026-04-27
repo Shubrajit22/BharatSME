@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -28,12 +29,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,29 +54,72 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.bharatsme.util.Resource
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun KycScreen(viewModel: KycViewModel, onComplete: () -> Unit) {
+fun KycScreen(
+    viewModel: KycViewModel,
+    onNavigateBack: () -> Unit, // Add this to handle going back to Dashboard
+    onComplete: () -> Unit
+) {
     val step by viewModel.currentStep
     val progress = (step.ordinal + 1).toFloat() / KycStep.entries.size.toFloat()
 
-    Column(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-        Text("KYC Verification", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(8.dp))
+    Scaffold(
+        topBar = {
+            CenterAlignedTopAppBar(
+                title = {
+                    Text("KYC Verification", style = MaterialTheme.typography.titleMedium)
+                },
+                navigationIcon = {
+                    IconButton(onClick = {
+                        // If on the first step, go back to Dashboard. Otherwise, go back one step.
+                        if (step == KycStep.BASIC) {
+                            onNavigateBack()
+                        } else {
+                            viewModel.moveBackStep()
+                        }
+                    }) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = Color.Unspecified,
+                    navigationIconContentColor = Color.Unspecified,
+                    titleContentColor = Color.Unspecified,
+                    actionIconContentColor = Color.Unspecified
+                )
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues) // Use Scaffold padding
+                .padding(horizontal = 24.dp, vertical = 8.dp)
+        ) {
+            // Progress Indicator shifted below the TopBar
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(CircleShape),
+            )
 
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier.fillMaxWidth().clip(CircleShape),
-        )
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Spacer(modifier = Modifier.height(32.dp))
-
-        Box(modifier = Modifier.weight(1f)) {
-            when (step) {
-                KycStep.BASIC -> BasicDetailsStep(viewModel)
-                KycStep.PAN -> PanUploadStep(viewModel)
-                KycStep.AADHAAR -> AadhaarUploadStep(viewModel)
-                KycStep.BIOMETRICS -> BiometricsStep(viewModel)
-                KycStep.SUBMITTED -> SuccessStep(onComplete)
+            Box(modifier = Modifier.weight(1f)) {
+                when (step) {
+                    KycStep.BASIC -> BasicDetailsStep(viewModel)
+                    KycStep.PAN -> PanUploadStep(viewModel)
+                    KycStep.AADHAAR -> AadhaarUploadStep(viewModel)
+                    KycStep.BIOMETRICS -> BiometricsStep(viewModel)
+                    KycStep.SUBMITTED -> SuccessStep(onComplete)
+                }
             }
         }
     }
@@ -80,6 +129,8 @@ fun KycScreen(viewModel: KycViewModel, onComplete: () -> Unit) {
 fun PanUploadStep(viewModel: KycViewModel) {
     var panNumber by viewModel.panNumber
     var selectedImageUri by viewModel.panUri
+
+    val state by viewModel.kycState
 
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -114,11 +165,12 @@ fun PanUploadStep(viewModel: KycViewModel) {
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { viewModel.moveToNextStep() },
-            enabled = panNumber.length == 10 && selectedImageUri != null,
+            onClick = { viewModel.submitPan() }, // Trigger network call
+            enabled = panNumber.length == 10 && selectedImageUri != null && state !is Resource.Loading,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Next Step")
+            if (state is Resource.Loading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            else Text("Verify PAN")
         }
     }
 }
@@ -167,6 +219,8 @@ fun AadhaarUploadStep(viewModel: KycViewModel) {
     var frontUri by viewModel.aadhaarFrontUri
     var backUri by viewModel.aadhaarBackUri
 
+    val state by viewModel.kycState
+
     val frontLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { frontUri = it }
     val backLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { backUri = it }
 
@@ -190,11 +244,12 @@ fun AadhaarUploadStep(viewModel: KycViewModel) {
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { viewModel.moveToNextStep() },
+            onClick = { viewModel.submitAadhaar() }, // Trigger network call
             modifier = Modifier.fillMaxWidth(),
-            enabled = number.length == 12 && frontUri != null && backUri != null
+            enabled = number.length == 12 && frontUri != null && backUri != null && state !is Resource.Loading
         ) {
-            Text("Verify Aadhaar")
+            if (state is Resource.Loading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
+            else Text("Verify Aadhaar")
         }
     }
 }
