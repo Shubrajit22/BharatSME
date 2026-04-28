@@ -95,7 +95,7 @@ pipeline {
                    sh """
                     docker run -d \
                     --name ${APP_NAME} \
-                    --network sme_sme-network \
+                    --network bharatsme_sme-network \
                     -p 8000:8000 \
                     -e DATABASE_URL=${DB_URL} \
                     -e MAIL_SERVER=mailpit \
