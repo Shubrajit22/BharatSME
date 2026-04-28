@@ -47,10 +47,10 @@ pipeline {
 
         stage('SAST Analysis (SonarQube)') {
             steps {
-                withSonarQubeEnv('SonarQubeServer') {
+               withSonarQubeEnv('SonarQubeServer') {
                     script {
-                        // We extract the branch name and remove 'origin/' if present
-                        def branchName = env.GIT_BRANCH.replace('origin/', '')
+                        // Remove 'origin/' and handle potential nulls
+                        def branchName = env.GIT_BRANCH ? env.GIT_BRANCH.replace('origin/', '') : 'sme'
                 
                         sh """
                         docker run --rm \
@@ -61,7 +61,7 @@ pipeline {
                             -Dsonar.sources=. \
                             -Dsonar.host.url=http://sme-sonarqube:9000 \
                             -Dsonar.login=${SONAR_AUTH_TOKEN} \
-                            -Dsonar.branch.name=${branchName}  // <--- Add this line
+                            -Dsonar.branch.name=${branchName}
                         """
                     }
                 }
@@ -69,23 +69,24 @@ pipeline {
         }
 
         stage('Unit Tests') {
+            options {
+                // Automatically kills the stage if it hangs for more than 5 minutes
+                timeout(time: 5, unit: 'MINUTES') 
+            }
             agent {
                 docker {
                     image 'sme-fastapi-prod:latest'
-                    // Keep the network so the container can reach the DB if needed
                     args '-u root --network bharatsme_sme-network'
                 }
             }
             environment {
-                // Prisma engine needs this string format to initialize, 
-                // even if we mock the internal calls.
                 DATABASE_URL = "postgresql://user:pass@sme-postgres:5432/sme_db"
             }
             steps {
-                // Since we are using our built image, prisma client is already there!
-                sh "pytest tests --junitxml=results.xml -o asyncio_mode=strict --maxfail=1 -p no:warnings"
+                // -v shows exactly which tests pass; --asyncio-mode=strict is for your KYC logic
+                sh "pytest tests -v --junitxml=results.xml"
             }
-        }  
+        }
 
         stage('Deploy Backend') {
             steps {
