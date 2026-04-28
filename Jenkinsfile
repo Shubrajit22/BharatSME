@@ -48,21 +48,25 @@ pipeline {
         stage('SAST Analysis (SonarQube)') {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
-                script {
-                    sh """
-                    docker run --rm \
-                        --network bharatsme_sme-network \
-                        -v ${WORKSPACE}:/usr/src \
-                        sonarsource/sonar-scanner-cli \
-                        -Dsonar.projectKey=sme-loan-backend \
-                        -Dsonar.sources=. \
-                        -Dsonar.host.url=http://sme-sonarqube:9000 \
-                        -Dsonar.login=${SONAR_AUTH_TOKEN}
-                    """
+                    script {
+                        // We extract the branch name and remove 'origin/' if present
+                        def branchName = env.GIT_BRANCH.replace('origin/', '')
+                
+                        sh """
+                        docker run --rm \
+                            --network bharatsme_sme-network \
+                            -v ${WORKSPACE}:/usr/src \
+                            sonarsource/sonar-scanner-cli \
+                            -Dsonar.projectKey=sme-loan-backend \
+                            -Dsonar.sources=. \
+                            -Dsonar.host.url=http://sme-sonarqube:9000 \
+                            -Dsonar.login=${SONAR_AUTH_TOKEN} \
+                            -Dsonar.branch.name=${branchName}  // <--- Add this line
+                        """
+                    }
                 }
             }
         }
-    }
 
         stage('Unit Tests') {
             agent {
@@ -79,7 +83,7 @@ pipeline {
             }
             steps {
                 // Since we are using our built image, prisma client is already there!
-                sh "pytest tests --junitxml=results.xml"
+                sh "pytest tests --junitxml=results.xml -o asyncio_mode=strict --maxfail=1 -p no:warnings"
             }
         }  
 
