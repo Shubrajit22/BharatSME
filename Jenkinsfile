@@ -48,19 +48,21 @@ pipeline {
         stage('SAST Analysis (SonarQube)') {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
+                script {
                     sh """
-                        docker run --rm \
+                    docker run --rm \
                         --network bharatsme_sme-network \
-                        -v ${WORKSPACE}/backend:/usr/src \
+                        -v ${WORKSPACE}:/usr/src \
                         sonarsource/sonar-scanner-cli \
                         -Dsonar.projectKey=sme-loan-backend \
                         -Dsonar.sources=. \
-                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.host.url=http://sme-sonarqube:9000 \
                         -Dsonar.login=${SONAR_AUTH_TOKEN}
                     """
                 }
             }
         }
+    }
 
         stage('Unit Tests') {
             agent {
