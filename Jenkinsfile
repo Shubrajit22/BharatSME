@@ -26,17 +26,22 @@ pipeline {
         stage('Build Image (Buildx)') {
             steps {
                 script {
-                    sh "docker buildx create --name ${BUILDX_BUILDER} --use --if-not-exists"
-                    sh """
-                        docker buildx build \
-                        --platform linux/amd64 \
-                        --load \
-                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
-                        -t ${IMAGE_NAME}:latest \
-                        --cache-from type=local,src=/tmp/.buildx-cache \
-                        --cache-to type=local,dest=/tmp/.buildx-cache,mode=max \
-                        ./backend
-                    """
+                    // Check if 'sme-builder' already exists
+                    def builderExists = sh(
+                        script: "docker buildx ls | grep sme-builder", 
+                        returnStatus: true
+                    ) == 0
+
+                    if (!builderExists) {
+                        echo "Creating new buildx builder: sme-builder"
+                        sh "docker buildx create --name sme-builder --use"
+                    } else {
+                        echo "Using existing buildx builder: sme-builder"
+                        sh "docker buildx use sme-builder"
+                    }
+
+                    // Now proceed with your build
+                    sh "docker buildx build --platform linux/amd64 -t sme-backend:latest ./backend --load"
                 }
             }
         }
