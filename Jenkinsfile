@@ -69,8 +69,8 @@ pipeline {
                 docker { image 'python:3.10-slim' }
             }
             steps {
-                sh 'pip install -r backend/requirements.txt'
-                sh 'pytest backend/tests --junitxml=results.xml'
+                sh 'pip install -r requirements.txt'
+                sh 'pytest tests --junitxml=results.xml'
             }
         }
 
