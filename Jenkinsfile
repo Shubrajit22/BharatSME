@@ -66,11 +66,14 @@ pipeline {
 
         stage('Unit Tests') {
             agent {
-                docker { image 'python:3.10-slim' }
+                docker {
+                    image 'sme-fastapi-prod:latest' // Use the image you just built!
+                    args '-u root --network bharatsme_sme-network'
+                }
             }
             steps {
-                sh 'pip install -r requirements.txt'
-                sh 'pytest tests --junitxml=results.xml'
+                // No need to pip install or prisma generate here!
+                sh "pytest tests --junitxml=results.xml"
             }
         }
 
