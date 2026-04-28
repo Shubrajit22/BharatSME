@@ -49,21 +49,20 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarQubeServer') {
                     script {
-                        // Get branch name and handle 'origin/' prefix
                         def branchName = env.GIT_BRANCH ? env.GIT_BRANCH.replace('origin/', '') : 'sme'
                 
                         sh """
                         docker run --rm \
                             --network bharatsme_sme-network \
-                            -v ${WORKSPACE}:/usr/src \
+                            --volumes-from jenkins-controller \
+                            -u root \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=sme-loan-backend-${branchName} \
                             -Dsonar.projectName="SME Loan Backend (${branchName})" \
-                            -Dsonar.sources=. \
+                            -Dsonar.sources=${WORKSPACE} \
                             -Dsonar.host.url=http://sme-sonarqube:9000 \
                             -Dsonar.login=${SONAR_AUTH_TOKEN}
                         """
-                        // Note: Removed -Dsonar.branch.name to avoid the Community Edition error
                     }
                 }
             }
