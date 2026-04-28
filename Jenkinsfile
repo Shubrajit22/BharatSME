@@ -39,7 +39,7 @@ pipeline {
                         echo "Using existing buildx builder: sme-builder"
                         sh "docker buildx use sme-builder"
                     }
-                    
+
                     sh "docker buildx build --platform linux/amd64 --load -t sme-fastapi-prod:${env.BUILD_NUMBER} -t sme-fastapi-prod:latest ."
                 }
             }
@@ -50,7 +50,7 @@ pipeline {
                 withSonarQubeEnv('SonarQubeServer') {
                     sh """
                         docker run --rm \
-                        --network sme_sme-network \
+                        --network sme-network \
                         -v ${WORKSPACE}/backend:/usr/src \
                         sonarsource/sonar-scanner-cli \
                         -Dsonar.projectKey=sme-loan-backend \
