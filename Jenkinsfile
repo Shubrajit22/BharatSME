@@ -67,15 +67,21 @@ pipeline {
         stage('Unit Tests') {
             agent {
                 docker {
-                    image 'sme-fastapi-prod:latest' // Use the image you just built!
+                    image 'sme-fastapi-prod:latest'
+                    // Keep the network so the container can reach the DB if needed
                     args '-u root --network bharatsme_sme-network'
                 }
             }
+            environment {
+                // Prisma engine needs this string format to initialize, 
+                // even if we mock the internal calls.
+                DATABASE_URL = "postgresql://user:pass@sme-postgres:5432/sme_db"
+            }
             steps {
-                // No need to pip install or prisma generate here!
+                // Since we are using our built image, prisma client is already there!
                 sh "pytest tests --junitxml=results.xml"
             }
-        }
+        }  
 
         stage('Deploy Backend') {
             steps {
