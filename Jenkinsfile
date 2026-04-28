@@ -39,9 +39,8 @@ pipeline {
                         echo "Using existing buildx builder: sme-builder"
                         sh "docker buildx use sme-builder"
                     }
-
-                    // Now proceed with your build
-                    sh "docker buildx build --platform linux/amd64 -t sme-backend:latest ./backend --load"
+                    
+                    sh "docker buildx build --platform linux/amd64 --load -t sme-fastapi-prod:${env.BUILD_NUMBER} -t sme-fastapi-prod:latest ."
                 }
             }
         }
