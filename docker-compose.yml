@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  jenkins:
+    image: jenkins/jenkins:lts
+    container_name: jenkins-controller
+    privileged: true
+    user: root
+    ports:
+      - "8080:8080"
+    volumes:
+      - jenkins_data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - sme-network
+
+  db-postgres:
+    image: ankane/pgvector:latest
+    container_name: sme-postgres
+    environment:
+      POSTGRES_DB: sme_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    networks:
+      - sme-network
+
+  redis:
+    image: redis:alpine
+    container_name: sme-redis
+    networks:
+      - sme-network
+
+  minio:
+    image: minio/minio
+    container_name: sme-minio
+    command: server /data --console-address ":9001"
+    networks:
+      - sme-network
+
+  sonarqube:
+    image: sonarqube:lts-community
+    container_name: sme-sonarqube
+    ports:
+      - "9000:9000"
+    networks:
+      - sme-network
+    environment:
+      - SONAR_ES_BOOTSTRAP_CHECKS_DISABLE=true
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_logs:/opt/sonarqube/logs
+      - sonarqube_extensions:/opt/sonarqube/extensions
+
+  mailpit:
+    image: axllent/mailpit
+    container_name: sme-mailpit
+    ports:
+      - "8025:8025" # Web UI
+      - "1025:1025" # SMTP Port
+    networks:
+      - sme-network
+
+networks:
+  sme-network:
+    driver: bridge
+
+volumes:
+  jenkins_data:
+  sonarqube_data:
+  sonarqube_logs:
+  sonarqube_extensions:
