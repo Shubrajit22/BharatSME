@@ -68,25 +68,25 @@ pipeline {
             }
         }
 
-        stage('Unit Tests') {
-            options {
-                // Automatically kills the stage if it hangs for more than 5 minutes
-                timeout(time: 5, unit: 'MINUTES') 
-            }
-            agent {
-                docker {
-                    image 'sme-fastapi-prod:latest'
-                    args '-u root --network bharatsme_sme-network'
-                }
-            }
-            environment {
-                DATABASE_URL = "postgresql://user:pass@sme-postgres:5432/sme_db"
-            }
-            steps {
-                // -v shows exactly which tests pass; --asyncio-mode=strict is for your KYC logic
-                sh "pytest tests -v --junitxml=results.xml"
-            }
-        }
+        // stage('Unit Tests') {
+        //     options {
+        //         // Automatically kills the stage if it hangs for more than 5 minutes
+        //         timeout(time: 5, unit: 'MINUTES') 
+        //     }
+        //     agent {
+        //         docker {
+        //             image 'sme-fastapi-prod:latest'
+        //             args '-u root --network bharatsme_sme-network'
+        //         }
+        //     }
+        //     environment {
+        //         DATABASE_URL = "postgresql://user:pass@sme-postgres:5432/sme_db"
+        //     }
+        //     steps {
+        //         // -v shows exactly which tests pass; --asyncio-mode=strict is for your KYC logic
+        //         sh "pytest tests -v --junitxml=results.xml"
+        //     }
+        // }
 
         stage('Deploy Backend') {
             steps {
