@@ -55,7 +55,7 @@ pipeline {
                         docker run --rm \
                             --network bharatsme_sme-network \
                             --volumes-from jenkins-controller \
-                            -w /usr/src${WORKSPACE} \
+                            -w ${WORKSPACE} \
                             -u root \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=sme-loan-backend-${branchName} \
