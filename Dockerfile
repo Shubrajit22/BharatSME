@@ -9,7 +9,8 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app
 
 # Install system dependencies
-# Prisma requires openssl and ca-certificates to download/run its binary engine
+# We keep openssl and ca-certificates for Prisma's binary engine
+# libpq-dev is required if you are using psycopg2 for PostgreSQL
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
@@ -18,7 +19,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and Prisma schema first for layer caching
-# Note: Assuming your schema is in a 'prisma' directory
 COPY requirements.txt .
 COPY prisma/schema.prisma ./prisma/
 
@@ -37,6 +37,5 @@ COPY . .
 EXPOSE 8000
 
 # Command to run the application
-# Prisma doesn't require a special start command, but you might want 
-# to run migrations before starting in a production environment
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+# Removing --reload for a more "production-ready" Jenkins build
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
