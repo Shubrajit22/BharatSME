@@ -114,7 +114,7 @@ async def finalize_kyc_submission(app_id: str, background_tasks):
         application_id=application.id
     )
     
-    return {"success": True, "status": updated_app.status}
+    return {"success": True, "status": "received"}
 
 # ---------------------------------------------------------
 # EXISTING: Helpers

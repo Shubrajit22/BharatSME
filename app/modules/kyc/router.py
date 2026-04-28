@@ -42,7 +42,7 @@ async def upload_photo_signature(
     return await services.process_photo_signature_upload(applicationId, photo_bytes, signature_bytes)
 
 # 3. UPDATED: Injected BackgroundTasks and pointed to the new service function
-@router.post("/submit")
+@router.post("/submit", status_code=201)
 async def submit_kyc(data: SubmitKyc, background_tasks: BackgroundTasks):
     # This now passes the background_tasks to your service layer so it can send the email!
     return await services.finalize_kyc_submission(data.applicationId, background_tasks)

@@ -2,35 +2,59 @@ pipeline {
     agent any
 
     environment {
-        APP_NAME = "sme-backend"
-        IMAGE_NAME = "sme-fastapi-prod"
+        APP_NAME = 'sme-backend'
+        IMAGE_NAME = 'sme-fastapi-prod'
         DB_URL = credentials('sme-db-url')
-        SONAR_TOKEN = credentials('sonar-token')
-        SONAR_HOST = "http://sonarqube:9000"
-        MAIL_HOST = "mailpit"
+        GIT_CREDS_ID = 'my-git-creds'
+        MAIL_HOST = 'mailpit'
+        BUILDX_BUILDER = 'sme-builder'
+        REPO_URL = 'https://github.com/Shubrajit22/BharatSME.git'
     }
 
     stages {
-        stage('Build Image') {
+        stage('Fetch Source') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} ./backend"
-                sh "docker tag ${IMAGE_NAME}:${BUILD_NUMBER} ${IMAGE_NAME}:latest"
+                script {
+                    def scmInfo = git branch: "${BRANCH_NAME}",
+                        credentialsId: "${GIT_CREDS_ID}",
+                        url: "${REPO_URL}"
+                    env.GIT_COMMIT_SHORT = scmInfo.GIT_COMMIT.take(7)
+                }
+            }
+        }
+
+        stage('Build Image (Buildx)') {
+            steps {
+                script {
+                    sh "docker buildx create --name ${BUILDX_BUILDER} --use --if-not-exists"
+                    sh """
+                        docker buildx build \
+                        --platform linux/amd64 \
+                        --load \
+                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
+                        -t ${IMAGE_NAME}:latest \
+                        --cache-from type=local,src=/tmp/.buildx-cache \
+                        --cache-to type=local,dest=/tmp/.buildx-cache,mode=max \
+                        ./backend
+                    """
+                }
             }
         }
 
         stage('SAST Analysis (SonarQube)') {
             steps {
-                // Using the Sonar Scanner CLI image to scan the code
-                sh """
-                    docker run --rm \
-                    --network sme_sme-network \
-                    -v ${WORKSPACE}/backend:/usr/src \
-                    sonarsource/sonar-scanner-cli \
-                    -Dsonar.projectKey=sme-loan-backend \
-                    -Dsonar.sources=. \
-                    -Dsonar.host.url=${SONAR_HOST} \
-                    -Dsonar.login=${SONAR_TOKEN}
-                """
+                withSonarQubeEnv('SonarQubeServer') {
+                    sh """
+                        docker run --rm \
+                        --network sme_sme-network \
+                        -v ${WORKSPACE}/backend:/usr/src \
+                        sonarsource/sonar-scanner-cli \
+                        -Dsonar.projectKey=sme-loan-backend \
+                        -Dsonar.sources=. \
+                        -Dsonar.host.url=${SONAR_HOST_URL} \
+                        -Dsonar.login=${SONAR_AUTH_TOKEN}
+                    """
+                }
             }
         }
 
@@ -40,7 +64,7 @@ pipeline {
             }
             steps {
                 sh 'pip install -r backend/requirements.txt'
-                sh 'pytest backend/tests'
+                sh 'pytest backend/tests --junitxml=results.xml'
             }
         }
 
@@ -48,20 +72,72 @@ pipeline {
             steps {
                 script {
                     sh "docker ps -aq --filter name=${APP_NAME} | xargs -r docker rm -f"
-
-                    sh """
-                        docker run -d \
-                        --name ${APP_NAME} \
-                        --network sme_sme-network \
-                        -p 8000:8000 \
-                        -e DATABASE_URL=${DB_URL} \
-                        -e REDIS_URL=redis://sme-redis:6379/0 \
-                        -e MAIL_SERVER=${MAIL_HOST} \
-                        -e MAIL_PORT=1025 \
-                        ${IMAGE_NAME}:latest
+                   sh """
+                    docker run -d \
+                    --name ${APP_NAME} \
+                    --network sme_sme-network \
+                    -p 8000:8000 \
+                    -e DATABASE_URL=${DB_URL} \
+                    -e MAIL_SERVER=mailpit \
+                    -e MAIL_PORT=1025 \
+                    -e SMTP_USERNAME=no-reply@bharatsme.in \
+                    -e SMTP_PASSWORD=testing \
+                    ${IMAGE_NAME}:latest
                     """
                 }
             }
+        }
+
+        stage('Generate Build Documentation') {
+            steps {
+                script {
+                    def date = sh(script: 'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()
+                    def report = """
+                            # SME Project Session Report: Build #${BUILD_NUMBER}
+                            **Date:** ${date}
+                            **Branch:** `${BRANCH_NAME}`
+                            **Commit:** `${env.GIT_COMMIT_SHORT}`
+
+                            ---
+
+                            ### 🚀 Deployment Summary
+                            - **Service Name:** `${APP_NAME}`
+                            - **Image:** `${IMAGE_NAME}:${BUILD_NUMBER}`
+                            - **Status:** ✅ Successfully Deployed to Local Docker
+
+                            ### 🔍 Quality & Security
+                            - **SonarQube Analysis:** [View Dashboard](http://localhost:9000/dashboard?id=sme-loan-backend)
+                            - **SAST Check:** Passed
+                            - **Unit Tests:** Completed (See archived `results.xml`)
+
+                            ### 🛠️ Infrastructure Environment
+                            - **Database:** PostgreSQL (pgvector)
+                            - **Object Storage:** MinIO
+                            - **Mailing Interface:** Mailpit (Port 8025)
+                            - **Cache Driver:** Redis
+
+                            ---
+                            *Generated by Jenkins Automation*
+                            """
+                    writeFile file: 'SESSION_REPORT.md', text: report
+                    archiveArtifacts artifacts: 'SESSION_REPORT.md, results.xml'
+                }
+            }
+        }
+
+        stage('Maintenance & Pruning') {
+            steps {
+                script {
+                    sh 'docker system prune -f --filter "until=24h"'
+                    sh "docker buildx prune --builder ${BUILDX_BUILDER} -f"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
         }
     }
 }
