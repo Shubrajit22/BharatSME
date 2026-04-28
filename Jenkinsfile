@@ -50,7 +50,7 @@ pipeline {
                 withSonarQubeEnv('SonarQubeServer') {
                     sh """
                         docker run --rm \
-                        --network sme-network \
+                        --network bharatsme_sme-network \
                         -v ${WORKSPACE}/backend:/usr/src \
                         sonarsource/sonar-scanner-cli \
                         -Dsonar.projectKey=sme-loan-backend \
