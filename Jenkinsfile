@@ -55,11 +55,12 @@ pipeline {
                         docker run --rm \
                             --network bharatsme_sme-network \
                             --volumes-from jenkins-controller \
+                            -w /usr/src${WORKSPACE} \
                             -u root \
                             sonarsource/sonar-scanner-cli \
                             -Dsonar.projectKey=sme-loan-backend-${branchName} \
                             -Dsonar.projectName="SME Loan Backend (${branchName})" \
-                            -Dsonar.sources=${WORKSPACE} \
+                            -Dsonar.sources=. \
                             -Dsonar.host.url=http://sme-sonarqube:9000 \
                             -Dsonar.login=${SONAR_AUTH_TOKEN}
                         """
