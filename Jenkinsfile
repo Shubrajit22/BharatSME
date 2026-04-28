@@ -26,6 +26,7 @@ pipeline {
         stage('Build Image (Buildx)') {
             steps {
                 script {
+                    // Check if 'sme-builder' already exists
                     def builderExists = sh(
                         script: "docker buildx ls | grep sme-builder", 
                         returnStatus: true
@@ -38,16 +39,9 @@ pipeline {
                         echo "Using existing buildx builder: sme-builder"
                         sh "docker buildx use sme-builder"
                     }
-                    sh """
-                        docker buildx build \
-                        --platform linux/amd64 \
-                        --load \
-                        -t ${IMAGE_NAME}:${BUILD_NUMBER} \
-                        -t ${IMAGE_NAME}:latest \
-                        --cache-from type=local,src=/tmp/.buildx-cache \
-                        --cache-to type=local,dest=/tmp/.buildx-cache,mode=max \
-                        ./backend
-                    """
+
+                    // Now proceed with your build
+                    sh "docker buildx build --platform linux/amd64 -t sme-backend:latest ./backend --load"
                 }
             }
         }
