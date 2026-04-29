@@ -11,7 +11,7 @@ async def connect_db():
     This should be called during the FastAPI startup 'lifespan'.
     """
     try:
-        await db.connect()
+        await db.connect(timeout=30)
         logging.info("Successfully connected to the database.")
     except Exception as e:
         logging.error(f"Error connecting to the database: {e}")
