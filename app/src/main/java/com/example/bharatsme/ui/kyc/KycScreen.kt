@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -51,17 +52,82 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.example.bharatsme.ui.theme.BharatSMETheme
 import com.example.bharatsme.util.Resource
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KycScreen(
     viewModel: KycViewModel,
-    onNavigateBack: () -> Unit, // Add this to handle going back to Dashboard
+    onNavigateBack: () -> Unit,
     onComplete: () -> Unit
 ) {
     val step by viewModel.currentStep
+    val kycState by viewModel.kycState
+    val panNumber by viewModel.panNumber
+    val panUri by viewModel.panUri
+    val aadhaarNumber by viewModel.aadhaarNumber
+    val aadhaarFrontUri by viewModel.aadhaarFrontUri
+    val aadhaarBackUri by viewModel.aadhaarBackUri
+    val selfieUri by viewModel.selfieUri
+    val signatureUri by viewModel.signatureUri
+
+    KycScreenContent(
+        step = step,
+        kycState = kycState,
+        panNumber = panNumber,
+        onPanNumberChange = { viewModel.panNumber.value = it },
+        panUri = panUri,
+        onPanUriChange = { viewModel.panUri.value = it },
+        aadhaarNumber = aadhaarNumber,
+        onAadhaarNumberChange = { viewModel.aadhaarNumber.value = it },
+        aadhaarFrontUri = aadhaarFrontUri,
+        onAadhaarFrontUriChange = { viewModel.aadhaarFrontUri.value = it },
+        aadhaarBackUri = aadhaarBackUri,
+        onAadhaarBackUriChange = { viewModel.aadhaarBackUri.value = it },
+        selfieUri = selfieUri,
+        onSelfieUriChange = { viewModel.selfieUri.value = it },
+        signatureUri = signatureUri,
+        onSignatureUriChange = { viewModel.signatureUri.value = it },
+        onNavigateBack = onNavigateBack,
+        onMoveBackStep = { viewModel.moveBackStep() },
+        onComplete = onComplete,
+        onSubmitBasicDetails = { name, email -> viewModel.submitBasicDetails(name, email) },
+        onSubmitPan = { viewModel.submitPan() },
+        onSubmitAadhaar = { viewModel.submitAadhaar() },
+        onMoveToNextStep = { viewModel.moveToNextStep() }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun KycScreenContent(
+    step: KycStep,
+    kycState: Resource<Unit>?,
+    panNumber: String,
+    onPanNumberChange: (String) -> Unit,
+    panUri: Uri?,
+    onPanUriChange: (Uri?) -> Unit,
+    aadhaarNumber: String,
+    onAadhaarNumberChange: (String) -> Unit,
+    aadhaarFrontUri: Uri?,
+    onAadhaarFrontUriChange: (Uri?) -> Unit,
+    aadhaarBackUri: Uri?,
+    onAadhaarBackUriChange: (Uri?) -> Unit,
+    selfieUri: Uri?,
+    onSelfieUriChange: (Uri?) -> Unit,
+    signatureUri: Uri?,
+    onSignatureUriChange: (Uri?) -> Unit,
+    onNavigateBack: () -> Unit,
+    onMoveBackStep: () -> Unit,
+    onComplete: () -> Unit,
+    onSubmitBasicDetails: (String, String) -> Unit,
+    onSubmitPan: () -> Unit,
+    onSubmitAadhaar: () -> Unit,
+    onMoveToNextStep: () -> Unit
+) {
     val progress = (step.ordinal + 1).toFloat() / KycStep.entries.size.toFloat()
 
     Scaffold(
@@ -72,11 +138,10 @@ fun KycScreen(
                 },
                 navigationIcon = {
                     IconButton(onClick = {
-                        // If on the first step, go back to Dashboard. Otherwise, go back one step.
                         if (step == KycStep.BASIC) {
                             onNavigateBack()
                         } else {
-                            viewModel.moveBackStep()
+                            onMoveBackStep()
                         }
                     }) {
                         Icon(
@@ -87,10 +152,6 @@ fun KycScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surface,
-                    scrolledContainerColor = Color.Unspecified,
-                    navigationIconContentColor = Color.Unspecified,
-                    titleContentColor = Color.Unspecified,
-                    actionIconContentColor = Color.Unspecified
                 )
             )
         }
@@ -98,10 +159,9 @@ fun KycScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues) // Use Scaffold padding
+                .padding(paddingValues)
                 .padding(horizontal = 24.dp, vertical = 8.dp)
         ) {
-            // Progress Indicator shifted below the TopBar
             LinearProgressIndicator(
                 progress = { progress },
                 modifier = Modifier
@@ -114,10 +174,36 @@ fun KycScreen(
 
             Box(modifier = Modifier.weight(1f)) {
                 when (step) {
-                    KycStep.BASIC -> BasicDetailsStep(viewModel)
-                    KycStep.PAN -> PanUploadStep(viewModel)
-                    KycStep.AADHAAR -> AadhaarUploadStep(viewModel)
-                    KycStep.BIOMETRICS -> BiometricsStep(viewModel)
+                    KycStep.BASIC -> BasicDetailsStepContent(
+                        state = kycState,
+                        onSubmit = onSubmitBasicDetails
+                    )
+                    KycStep.PAN -> PanUploadStepContent(
+                        panNumber = panNumber,
+                        onPanNumberChange = onPanNumberChange,
+                        panUri = panUri,
+                        onPanUriChange = onPanUriChange,
+                        state = kycState,
+                        onSubmit = onSubmitPan
+                    )
+                    KycStep.AADHAAR -> AadhaarUploadStepContent(
+                        number = aadhaarNumber,
+                        onNumberChange = onAadhaarNumberChange,
+                        frontUri = aadhaarFrontUri,
+                        onFrontUriChange = onAadhaarFrontUriChange,
+                        backUri = aadhaarBackUri,
+                        onBackUriChange = onAadhaarBackUriChange,
+                        state = kycState,
+                        onSubmit = onSubmitAadhaar
+                    )
+                    KycStep.BIOMETRICS -> BiometricsStepContent(
+                        selfieUri = selfieUri,
+                        onSelfieUriChange = onSelfieUriChange,
+                        signatureUri = signatureUri,
+                        onSignatureUriChange = onSignatureUriChange,
+                        state = kycState,
+                        onNext = onMoveToNextStep
+                    )
                     KycStep.SUBMITTED -> SuccessStep(onComplete)
                 }
             }
@@ -127,22 +213,36 @@ fun KycScreen(
 
 @Composable
 fun PanUploadStep(viewModel: KycViewModel) {
-    var panNumber by viewModel.panNumber
-    var selectedImageUri by viewModel.panUri
+    PanUploadStepContent(
+        panNumber = viewModel.panNumber.value,
+        onPanNumberChange = { viewModel.panNumber.value = it },
+        panUri = viewModel.panUri.value,
+        onPanUriChange = { viewModel.panUri.value = it },
+        state = viewModel.kycState.value,
+        onSubmit = { viewModel.submitPan() }
+    )
+}
 
-    val state by viewModel.kycState
-
+@Composable
+fun PanUploadStepContent(
+    panNumber: String,
+    onPanNumberChange: (String) -> Unit,
+    panUri: Uri?,
+    onPanUriChange: (Uri?) -> Unit,
+    state: Resource<Unit>?,
+    onSubmit: () -> Unit
+) {
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        selectedImageUri = uri
+        onPanUriChange(uri)
     }
 
     Column {
         Text("PAN Verification", style = MaterialTheme.typography.titleLarge)
         OutlinedTextField(
             value = panNumber,
-            onValueChange = { if (it.length <= 10) panNumber = it.uppercase() },
+            onValueChange = { if (it.length <= 10) onPanNumberChange(it.uppercase()) },
             label = { Text("Enter PAN Number") },
             modifier = Modifier.fillMaxWidth()
         )
@@ -158,28 +258,56 @@ fun PanUploadStep(viewModel: KycViewModel) {
             Text(" Upload PAN Image", color = Color.Black)
         }
 
-        selectedImageUri?.let {
+
+        panUri?.let {
             Text("File selected: ${it.lastPathSegment}", color = Color.DarkGray)
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
+        // Inside PanUploadStepContent
+        if (state is Resource.Error) {
+            Text(
+                text = state.message ?: "Verification Failed",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+
         Button(
-            onClick = { viewModel.submitPan() }, // Trigger network call
-            enabled = panNumber.length == 10 && selectedImageUri != null && state !is Resource.Loading,
-            modifier = Modifier.fillMaxWidth()
+            onClick = onSubmit,
+            enabled = panNumber.length == 10 && panUri != null && state !is Resource.Loading,
+            modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            if (state is Resource.Loading) CircularProgressIndicator(modifier = Modifier.size(24.dp))
-            else Text("Verify PAN")
+            if (state is Resource.Loading) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                    Spacer(Modifier.width(8.dp))
+                    Text("AI is verifying...")
+                }
+            } else {
+                Text("Verify & Continue")
+            }
         }
     }
 }
 
 @Composable
 fun BasicDetailsStep(viewModel: KycViewModel) {
+    BasicDetailsStepContent(
+        state = viewModel.kycState.value,
+        onSubmit = { name, email -> viewModel.submitBasicDetails(name, email) }
+    )
+}
+
+@Composable
+fun BasicDetailsStepContent(
+    state: Resource<Unit>?,
+    onSubmit: (String, String) -> Unit
+) {
     var name by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
-    val state by viewModel.kycState
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Personal Information", style = MaterialTheme.typography.titleLarge)
@@ -203,7 +331,7 @@ fun BasicDetailsStep(viewModel: KycViewModel) {
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { viewModel.submitBasicDetails(name, email) },
+            onClick = { onSubmit(name, email) },
             modifier = Modifier.fillMaxWidth().height(56.dp),
             enabled = name.isNotBlank() && email.contains("@") && state !is Resource.Loading
         ) {
@@ -215,21 +343,38 @@ fun BasicDetailsStep(viewModel: KycViewModel) {
 
 @Composable
 fun AadhaarUploadStep(viewModel: KycViewModel) {
-    var number by viewModel.aadhaarNumber
-    var frontUri by viewModel.aadhaarFrontUri
-    var backUri by viewModel.aadhaarBackUri
+    AadhaarUploadStepContent(
+        number = viewModel.aadhaarNumber.value,
+        onNumberChange = { viewModel.aadhaarNumber.value = it },
+        frontUri = viewModel.aadhaarFrontUri.value,
+        onFrontUriChange = { viewModel.aadhaarFrontUri.value = it },
+        backUri = viewModel.aadhaarBackUri.value,
+        onBackUriChange = { viewModel.aadhaarBackUri.value = it },
+        state = viewModel.kycState.value,
+        onSubmit = { viewModel.submitAadhaar() }
+    )
+}
 
-    val state by viewModel.kycState
-
-    val frontLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { frontUri = it }
-    val backLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { backUri = it }
+@Composable
+fun AadhaarUploadStepContent(
+    number: String,
+    onNumberChange: (String) -> Unit,
+    frontUri: Uri?,
+    onFrontUriChange: (Uri?) -> Unit,
+    backUri: Uri?,
+    onBackUriChange: (Uri?) -> Unit,
+    state: Resource<Unit>?,
+    onSubmit: () -> Unit
+) {
+    val frontLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { onFrontUriChange(it) }
+    val backLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { onBackUriChange(it) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Text("Aadhaar Verification", style = MaterialTheme.typography.titleLarge)
 
         OutlinedTextField(
             value = number,
-            onValueChange = { if (it.length <= 12) number = it.filter { char -> char.isDigit() } },
+            onValueChange = { if (it.length <= 12) onNumberChange(it.filter { char -> char.isDigit() }) },
             label = { Text("Aadhaar Number") },
             placeholder = { Text("XXXX XXXX XXXX") },
             modifier = Modifier.fillMaxWidth(),
@@ -237,14 +382,23 @@ fun AadhaarUploadStep(viewModel: KycViewModel) {
         )
 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            KycUploadCard("Front Side", frontUri != null, Modifier.weight(1f)) { frontLauncher.launch("image/*") }
-            KycUploadCard("Back Side", backUri != null, Modifier.weight(1f)) { backLauncher.launch("image/*") }
+            KycUploadCard(
+                label = "Front Side",
+                isDone = frontUri != null,
+                modifier = Modifier.weight(1f)
+            ) { frontLauncher.launch("image/*") }
+
+            KycUploadCard(
+                label = "Back Side",
+                isDone = backUri != null,
+                modifier = Modifier.weight(1f)
+            ) { backLauncher.launch("image/*") }
         }
 
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { viewModel.submitAadhaar() }, // Trigger network call
+            onClick = onSubmit,
             modifier = Modifier.fillMaxWidth(),
             enabled = number.length == 12 && frontUri != null && backUri != null && state !is Resource.Loading
         ) {
@@ -256,27 +410,64 @@ fun AadhaarUploadStep(viewModel: KycViewModel) {
 
 @Composable
 fun BiometricsStep(viewModel: KycViewModel) {
-    var selfieUri by viewModel.selfieUri
-    var signatureUri by viewModel.signatureUri
+    BiometricsStepContent(
+        selfieUri = viewModel.selfieUri.value,
+        onSelfieUriChange = { viewModel.selfieUri.value = it },
+        signatureUri = viewModel.signatureUri.value,
+        onSignatureUriChange = { viewModel.signatureUri.value = it },
+        state = viewModel.kycState.value,
+        onNext = { viewModel.moveToNextStep() }
+    )
+}
 
-    val selfieLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { selfieUri = it }
-    val signatureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { signatureUri = it }
+@Composable
+fun BiometricsStepContent(
+    selfieUri: Uri?,
+    onSelfieUriChange: (Uri?) -> Unit,
+    signatureUri: Uri?,
+    onSignatureUriChange: (Uri?) -> Unit,
+    state: Resource<Unit>?, // Pass the state here
+    onNext: () -> Unit
+) {
+    val selfieLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { onSelfieUriChange(it) }
+    val signatureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { onSignatureUriChange(it) }
 
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Final Biometrics", style = MaterialTheme.typography.titleLarge)
-        Text("Please upload a clear selfie and a photo of your signature on white paper.", style = MaterialTheme.typography.bodySmall)
+        Text("Biometric Identity", style = MaterialTheme.typography.titleLarge)
 
-        KycUploadCard("Capture Selfie", selfieUri != null, Modifier.fillMaxWidth()) { selfieLauncher.launch("image/*") }
-        KycUploadCard("Upload Signature", signatureUri != null, Modifier.fillMaxWidth()) { signatureLauncher.launch("image/*") }
+        Text(
+            "Our AI will match your selfie against your ID documents and check for existing accounts.",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
+
+        KycUploadCard(
+            label = "Capture Live Selfie",
+            isDone = selfieUri != null,
+            isAnalyzing = state is Resource.Loading, // Show loading on the card
+            modifier = Modifier.fillMaxWidth()
+        ) { selfieLauncher.launch("image/*") }
+
+        KycUploadCard(
+            label = "Upload Signature",
+            isDone = signatureUri != null,
+            modifier = Modifier.fillMaxWidth()
+        ) { signatureLauncher.launch("image/*") }
+
+        if (state is Resource.Error) {
+            // This is where "Duplicate Account Found" or "Liveness Failed" appears
+            Text(state.message!!, color = Color.Red, style = MaterialTheme.typography.bodyMedium)
+        }
 
         Spacer(modifier = Modifier.weight(1f))
 
         Button(
-            onClick = { viewModel.moveToNextStep() }, // In a real app, call viewModel.submitFinalKyc()
-            modifier = Modifier.fillMaxWidth(),
-            enabled = selfieUri != null && signatureUri != null
+            onClick = onNext,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            enabled = selfieUri != null && signatureUri != null && state !is Resource.Loading
         ) {
-            Text("Final Submission")
+            if (state is Resource.Loading) Text("Running Fraud Detection...")
+            else Text("Complete Onboarding")
         }
     }
 }
@@ -307,23 +498,72 @@ fun SuccessStep(onComplete: () -> Unit) {
 }
 
 @Composable
-fun KycUploadCard(label: String, isDone: Boolean, modifier: Modifier, onClick: () -> Unit) {
+fun KycUploadCard(
+    label: String,
+    isDone: Boolean,
+    isAnalyzing: Boolean = false, // New state
+    modifier: Modifier,
+    onClick: () -> Unit
+) {
     Card(
-        modifier = modifier.height(100.dp).clickable { onClick() },
+        modifier = modifier.height(100.dp).clickable(enabled = !isAnalyzing) { onClick() },
         colors = CardDefaults.cardColors(
-            containerColor = if (isDone) Color(0xFFE8F5E9) else MaterialTheme.colorScheme.surfaceVariant
+            containerColor = when {
+                isAnalyzing -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                isDone -> Color(0xFFE8F5E9)
+                else -> MaterialTheme.colorScheme.surfaceVariant
+            }
         ),
         border = if (isDone) BorderStroke(1.dp, Color(0xFF4CAF50)) else null
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.fillMaxSize()) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Icon(
-                    if (isDone) Icons.Default.Check else Icons.Default.CloudUpload,
-                    contentDescription = null,
-                    tint = if (isDone) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                if (isAnalyzing) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                } else {
+                    Icon(
+                        if (isDone) Icons.Default.Check else Icons.Default.CloudUpload,
+                        contentDescription = null,
+                        tint = if (isDone) Color(0xFF2E7D32) else MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    text = if (isAnalyzing) "Analyzing..." else label,
+                    style = MaterialTheme.typography.labelMedium
                 )
-                Text(label, style = MaterialTheme.typography.labelMedium)
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun KycScreenPreview() {
+    BharatSMETheme {
+        KycScreenContent(
+            step = KycStep.BASIC,
+            kycState = null,
+            panNumber = "",
+            onPanNumberChange = {},
+            panUri = null,
+            onPanUriChange = {},
+            aadhaarNumber = "",
+            onAadhaarNumberChange = {},
+            aadhaarFrontUri = null,
+            onAadhaarFrontUriChange = {},
+            aadhaarBackUri = null,
+            onAadhaarBackUriChange = {},
+            selfieUri = null,
+            onSelfieUriChange = {},
+            signatureUri = null,
+            onSignatureUriChange = {},
+            onNavigateBack = {},
+            onMoveBackStep = {},
+            onComplete = {},
+            onSubmitBasicDetails = { _, _ -> },
+            onSubmitPan = {},
+            onSubmitAadhaar = {},
+            onMoveToNextStep = {}
+        )
     }
 }

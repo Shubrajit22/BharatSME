@@ -10,16 +10,18 @@ import kotlinx.coroutines.withContext
 class LoanRepository(private val api: SmeApiService) {
 
     // Fetch existing applications
-    suspend fun getApplications(): Resource<List<LoanResponse>> = withContext(Dispatchers.IO) {
-        try {
-            val response = api.listApps()
+    suspend fun getApplications(): Resource<List<LoanResponse>> {
+        return try {
+            val response = api.listApps() // Calls GET /api/v1/loans/
+
             if (response.isSuccessful && response.body() != null) {
                 Resource.Success(response.body()!!)
             } else {
-                Resource.Error("Failed to fetch loans: ${response.message()}")
+                // Include the status code in the error message for the ViewModel to catch
+                Resource.Error("Error ${response.code()}: ${response.message()}")
             }
         } catch (e: Exception) {
-            Resource.Error(e.localizedMessage ?: "Network error")
+            Resource.Error(e.localizedMessage ?: "Network Connection Error")
         }
     }
 

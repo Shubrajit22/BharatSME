@@ -1,3 +1,5 @@
+@file:Suppress("UNCHECKED_CAST")
+
 package com.example.bharatsme.ui.navigation
 
 import androidx.compose.runtime.Composable
@@ -8,6 +10,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.bharatsme.data.local.TokenManager
 import com.example.bharatsme.data.repository.AuthRepository
 import com.example.bharatsme.data.repository.KycRepository
 import com.example.bharatsme.data.repository.LoanRepository
@@ -27,6 +30,7 @@ fun NavGraph(
     authRepository: AuthRepository,
     loanRepository: LoanRepository,
     kycRepository: KycRepository,
+    tokenManager: TokenManager,
     userName: String,
     startDestination: Any
 ) {
@@ -59,12 +63,18 @@ fun NavGraph(
 
         // --- Dashboard Screen ---
         composable<Screen.Dashboard> {
-            val scope = rememberCoroutineScope() // Needed to call suspend logout()
+            val scope = rememberCoroutineScope()
 
             val viewModel: DashboardViewModel = viewModel(
                 factory = object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
                     override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return DashboardViewModel(loanRepository) as T
+                        // You must pass BOTH dependencies now
+                        return DashboardViewModel(
+                            repository = loanRepository,
+                            tokenManager = tokenManager,
+                            authRepository = authRepository
+                        ) as T
                     }
                 }
             )
@@ -76,9 +86,9 @@ fun NavGraph(
                 onNavigateToNewLoan = { navController.navigate(Screen.NewLoan) },
                 onLogout = {
                     scope.launch {
-                        authRepository.logout() // Clears TokenManager
+                        // Ensure your AuthRepository uses the same tokenManager instance
+                        authRepository.logout()
                         navController.navigate(Screen.Auth) {
-                            // Clear the entire backstack so they can't "back" into the dashboard
                             popUpTo(0) { inclusive = true }
                         }
                     }

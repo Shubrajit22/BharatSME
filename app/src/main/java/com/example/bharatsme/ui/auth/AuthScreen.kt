@@ -19,8 +19,10 @@ import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,6 +35,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -44,13 +47,18 @@ import com.example.bharatsme.util.Resource
 fun AuthScreen(viewModel: AuthViewModel, onAuthSuccess: () -> Unit) {
     val mode by viewModel.mode
     val state by viewModel.authState
+    val selectedUserType by viewModel.selectedUserType
+    val context = LocalContext.current
 
     AuthContent(
         mode = mode,
         state = state,
+        selectedUserType = selectedUserType,
+        onUserTypeChange = viewModel::setUserType,
         onToggleMode = viewModel::toggleMode,
         onLogin = viewModel::login,
         onRegister = viewModel::register,
+        onGoogleLogin = { viewModel.continueWithGoogle(context) },
         onAuthSuccess = onAuthSuccess
     )
 }
@@ -59,9 +67,12 @@ fun AuthScreen(viewModel: AuthViewModel, onAuthSuccess: () -> Unit) {
 fun AuthContent(
     mode: AuthMode,
     state: Resource<Any>?,
+    selectedUserType: UserType,
+    onUserTypeChange: (UserType) -> Unit,
     onToggleMode: () -> Unit,
     onLogin: (String, String) -> Unit,
-    onRegister: (String, String, String) -> Unit,
+    onRegister: (String, String, String, UserType) -> Unit,
+    onGoogleLogin: () -> Unit,
     onAuthSuccess: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -101,42 +112,65 @@ fun AuthContent(
 
         // Toggle Switch
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
-                .padding(4.dp)
+            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp)
         ) {
-            AuthToggleButton(
-                text = "Login",
-                isSelected = mode == AuthMode.LOGIN,
-                modifier = Modifier.weight(1f),
-                onClick = { if (mode != AuthMode.LOGIN) onToggleMode() }
-            )
-            AuthToggleButton(
-                text = "Register",
-                isSelected = mode == AuthMode.REGISTER,
-                modifier = Modifier.weight(1f),
-                onClick = { if (mode != AuthMode.REGISTER) onToggleMode() }
-            )
+            AuthToggleButton("Login", mode == AuthMode.LOGIN, Modifier.weight(1f)) {
+                if (mode != AuthMode.LOGIN) onToggleMode()
+            }
+            AuthToggleButton("Register", mode == AuthMode.REGISTER, Modifier.weight(1f)) {
+                if (mode != AuthMode.REGISTER) onToggleMode()
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
         // Animated Form Fields
         if (mode == AuthMode.REGISTER) {
+            Text("Register as:", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+            Spacer(modifier = Modifier.height(8.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().height(48.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.4f))
+                    .padding(4.dp)
+            ) {
+                AuthToggleButton(
+                    text = "Individual",
+                    isSelected = selectedUserType == UserType.INDIVIDUAL,
+                    modifier = Modifier.weight(1f)
+                ) { onUserTypeChange(UserType.INDIVIDUAL) }
+
+                AuthToggleButton(
+                    text = "SME",
+                    isSelected = selectedUserType == UserType.SME,
+                    modifier = Modifier.weight(1f)
+                ) { onUserTypeChange(UserType.SME) }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
             OutlinedTextField(
                 value = fullName,
                 onValueChange = { fullName = it },
-                label = { Text("Full Name") },
+                label = { Text(if (selectedUserType == UserType.SME) "Business Name" else "Full Name") },
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) }
             )
             Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = { email = it },
+                label = { Text(if (mode == AuthMode.LOGIN) "Email or Username" else "Email") },
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = { Icon(Icons.Default.Email, contentDescription = null) }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
         }
 
         OutlinedTextField(
-            value = email,
+            value = email, // This serves as the 'identifier' for Login
             onValueChange = { email = it },
             label = { Text(if (mode == AuthMode.LOGIN) "Email or Username" else "Email") },
             modifier = Modifier.fillMaxWidth(),
@@ -160,11 +194,9 @@ fun AuthContent(
         Button(
             onClick = {
                 if (mode == AuthMode.LOGIN) onLogin(email, password)
-                else onRegister(email, password, fullName)
+                else onRegister(email, password, fullName, selectedUserType)
             },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
+            modifier = Modifier.fillMaxWidth().height(56.dp),
             shape = RoundedCornerShape(12.dp),
             enabled = state !is Resource.Loading
         ) {
@@ -173,6 +205,22 @@ fun AuthContent(
             } else {
                 Text(if (mode == AuthMode.LOGIN) "Login" else "Sign Up")
             }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            HorizontalDivider(modifier = Modifier.weight(1f))
+            Text(" OR ", style = MaterialTheme.typography.labelSmall, color = Color.Gray, modifier = Modifier.padding(horizontal = 8.dp))
+            HorizontalDivider(modifier = Modifier.weight(1f))
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedButton(
+            onClick = onGoogleLogin,
+            modifier = Modifier.fillMaxWidth().height(56.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Continue with Google")
         }
 
         // Error Message
@@ -214,8 +262,11 @@ fun AuthScreenLoginPreview() {
             state = null,
             onToggleMode = {},
             onLogin = { _, _ -> },
-            onRegister = { _, _, _ -> },
-            onAuthSuccess = {}
+            onRegister = { _, _, _,_ -> },
+            onAuthSuccess = {},
+            onGoogleLogin = {},
+            onUserTypeChange = {},
+            selectedUserType = UserType.INDIVIDUAL
         )
     }
 }
@@ -229,8 +280,11 @@ fun AuthScreenRegisterPreview() {
             state = null,
             onToggleMode = {},
             onLogin = { _, _ -> },
-            onRegister = { _, _, _ -> },
-            onAuthSuccess = {}
+            onRegister = { _, _, _,_ -> },
+            onAuthSuccess = {},
+            onGoogleLogin = {},
+            onUserTypeChange = {},
+            selectedUserType = UserType.INDIVIDUAL
         )
     }
 }
@@ -244,8 +298,11 @@ fun AuthScreenLoadingPreview() {
             state = Resource.Loading(),
             onToggleMode = {},
             onLogin = { _, _ -> },
-            onRegister = { _, _, _ -> },
-            onAuthSuccess = {}
+            onRegister = { _, _, _,_ -> },
+            onAuthSuccess = {},
+            onGoogleLogin = {},
+            onUserTypeChange = {},
+            selectedUserType = UserType.INDIVIDUAL
         )
     }
 }
@@ -259,8 +316,11 @@ fun AuthScreenErrorPreview() {
             state = Resource.Error("Invalid credentials"),
             onToggleMode = {},
             onLogin = { _, _ -> },
-            onRegister = { _, _, _ -> },
-            onAuthSuccess = {}
+            onRegister = { _, _, _,_ -> },
+            onAuthSuccess = {},
+            onGoogleLogin = {},
+            onUserTypeChange = {},
+            selectedUserType = UserType.INDIVIDUAL
         )
     }
 }

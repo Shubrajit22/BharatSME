@@ -20,9 +20,19 @@ interface SmeApiService {
     @POST("api/v1/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<TokenResponse>
 
+    @GET("api/v1/auth/me")
+    suspend fun getMe(): Response<UserProfile>
+
+    @POST("api/v1/auth/google-login")
+    suspend fun googleLogin(
+        @Body request: GoogleLoginRequest
+    ): Response<TokenResponse>
+
     // --- KYC Onboarding ---
     @POST("api/v1/kyc/basic-details")
-    suspend fun checkDuplicateAndInit(@Body request: BasicDetails): Response<Unit>
+    suspend fun checkDuplicateAndInit(
+        @Body details: BasicDetails
+    ): Response<KycInitResponse> // Match the DTO here
 
     @Multipart
     @POST("api/v1/kyc/validate-pan")
@@ -30,7 +40,7 @@ interface SmeApiService {
         @Part("applicationId") applicationId: RequestBody,
         @Part("panNumber") panNumber: RequestBody,
         @Part file: MultipartBody.Part
-    ): Response<Unit>
+    ): Response<KycResponse>
 
     @Multipart
     @POST("api/v1/kyc/validate-aadhaar")
@@ -62,6 +72,4 @@ interface SmeApiService {
     @POST("api/v1/loans/{id}/evaluate")
     suspend fun runPrescreen(@Path("id") id: String): Response<Unit>
 
-    @POST("api/v1/loans/apply")
-    suspend fun applyForLoan(@Body request: LoanCreate): Response<Unit>
 }

@@ -55,7 +55,8 @@ class MainActivity : ComponentActivity() {
                             loanRepository = loanRepo,
                             kycRepository = kycRepo,
                             userName = "Applicant", // You can fetch real name here too
-                            startDestination = destination
+                            startDestination = destination,
+                            tokenManager = tokenManager
                         )
                     } ?: run {
                         // Optional: Show a splash screen/loading while checking token

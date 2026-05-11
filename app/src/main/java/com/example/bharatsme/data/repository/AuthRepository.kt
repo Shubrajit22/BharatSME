@@ -2,9 +2,11 @@ package com.example.bharatsme.data.repository
 
 import com.example.bharatsme.data.local.TokenManager
 import com.example.bharatsme.data.remote.api.SmeApiService
+import com.example.bharatsme.data.remote.dto.GoogleLoginRequest
 import com.example.bharatsme.data.remote.dto.LoginRequest
 import com.example.bharatsme.data.remote.dto.RegisterRequest
 import com.example.bharatsme.data.remote.dto.TokenResponse
+import com.example.bharatsme.data.remote.dto.UserProfile
 import com.example.bharatsme.data.remote.dto.UserResponse
 import com.example.bharatsme.util.Resource
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +51,35 @@ class AuthRepository(
             } catch (e: Exception) {
                 Resource.Error(e.localizedMessage ?: "Network error. Check your backend.")
             }
+        }
+    }
+
+    suspend fun getProfile(): Resource<UserProfile> {
+        return try {
+            val response = api.getMe()
+            if (response.isSuccessful && response.body() != null) {
+                Resource.Success(response.body()!!)
+            } else {
+                // Handle 401 Unauthorized or other server errors
+                Resource.Error("Could not fetch profile: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Network Connection Error")
+        }
+    }
+
+    suspend fun googleLogin(request: GoogleLoginRequest): Resource<TokenResponse> {
+        return try {
+            val response = api.googleLogin(request)
+            if (response.isSuccessful && response.body() != null) {
+                val token = response.body()!!
+                tokenManager.saveToken(token.accessToken)
+                Resource.Success(token)
+            } else {
+                Resource.Error("Google Auth Failed: ${response.code()}")
+            }
+        } catch (e: Exception) {
+            Resource.Error(e.localizedMessage ?: "Network Error")
         }
     }
 

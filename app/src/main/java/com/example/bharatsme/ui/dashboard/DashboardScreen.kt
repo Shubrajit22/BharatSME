@@ -11,7 +11,6 @@ import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Inbox
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -28,13 +27,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.bharatsme.ui.theme.BharatSMETheme
 import com.example.bharatsme.data.remote.dto.LoanResponse
+import com.example.bharatsme.data.remote.dto.UserProfile
 import com.example.bharatsme.util.Resource
 import kotlin.collections.emptyList
 
-enum class DashboardTab { HOME, SETTINGS }
+enum class DashboardTab { HOME,PROFILE, SETTINGS }
 
 @Composable
 fun DashboardScreen(
@@ -46,15 +45,19 @@ fun DashboardScreen(
 ) {
     // Explicitly use the resourceState from the ViewModel
     val resourceState by viewModel.uiState
+    val profileState by viewModel.profileState
 
     LaunchedEffect(Unit) {
         viewModel.loadDashboardData()
+        viewModel.loadProfile()
     }
 
     DashboardScreenContent(
         userName = userName,
         onEvaluateClick = { viewModel.evaluateLoan(it) },
         resourceState = resourceState,
+        profileState = profileState,      // Pass it down
+        onLoadProfile = { viewModel.loadProfile() }, // Pass the action
         onNavigateToKyc = onNavigateToKyc,
         onNavigateToNewLoan = onNavigateToNewLoan,
         onLogout = onLogout
@@ -66,6 +69,8 @@ fun DashboardScreenContent(
     userName: String,
     onEvaluateClick: (String) -> Unit,
     resourceState: Resource<List<LoanResponse>>,
+    profileState: Resource<UserProfile>, // Add this
+    onLoadProfile: () -> Unit,
     onNavigateToKyc: () -> Unit,
     onNavigateToNewLoan: () -> Unit,
     onLogout: () -> Unit
@@ -75,16 +80,13 @@ fun DashboardScreenContent(
 
     Scaffold(
         topBar = {
-            // TopBar remains visible for both tabs for consistency
+            val title = when(selectedTab) {
+                DashboardTab.HOME -> "Hello, $userName"
+                DashboardTab.PROFILE -> "My Profile"
+                DashboardTab.SETTINGS -> "Settings"
+            }
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = if (selectedTab == DashboardTab.HOME) "Hello, $userName" else "Settings",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                if (selectedTab == DashboardTab.HOME) {
-                    Text("Welcome to BharatSME Portal", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
-                }
+                Text(text = title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
             }
         },
         bottomBar = {
@@ -119,7 +121,16 @@ fun DashboardScreenContent(
                     )
                 }
                 DashboardTab.SETTINGS -> {
-                    SettingsView(onLogout = onLogout)
+                    SettingsView(
+                        onProfileClick = { selectedTab = DashboardTab.PROFILE },
+                        onLogout = onLogout)
+                }
+                DashboardTab.PROFILE -> {
+                    // This is the new Profile View we built
+                    ProfileView(
+                        state = profileState,
+                        onRetry = onLoadProfile
+                    )
                 }
             }
         }
@@ -199,7 +210,7 @@ fun DashboardGridView(
 }
 
 @Composable
-fun SettingsView(onLogout: () -> Unit) {
+fun SettingsView(onProfileClick: () -> Unit,onLogout: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -211,7 +222,7 @@ fun SettingsView(onLogout: () -> Unit) {
             headlineContent = { Text("Profile Settings") },
             supportingContent = { Text("Edit your personal and business details") },
             leadingContent = { Icon(Icons.Default.Person, contentDescription = null) },
-            modifier = Modifier.clickable { }
+            modifier = Modifier.clickable { onProfileClick() }
         )
         HorizontalDivider()
         ListItem(
@@ -319,6 +330,114 @@ fun EmptyApplicationsView() {
     }
 }
 
+@Composable
+fun ProfileView(
+    state: Resource<UserProfile>,
+    onRetry: () -> Unit
+) {
+    when (state) {
+        is Resource.Loading -> {
+            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+        is Resource.Error -> {
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                Text("Failed to load profile", color = Color.Red)
+                Button(onClick = onRetry) { Text("Retry") }
+            }
+        }
+        is Resource.Success -> {
+            val profile = state.data!!
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // 1. Account Header
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(20.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            modifier = Modifier.size(60.dp),
+                            shape = RoundedCornerShape(30.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Text(
+                                    profile.fullName.take(1).uppercase(),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    color = Color.White
+                                )
+                            }
+                        }
+                        Spacer(Modifier.width(16.dp))
+                        Column {
+                            Text(profile.fullName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(profile.username, style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
+                        }
+                    }
+                }
+
+                // 2. Basic Details Section
+                Text("Basic Details", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(8.dp)) {
+                        ProfileInfoRow(label = "Email", value = profile.email, icon = Icons.Default.Inbox)
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        ProfileInfoRow(label = "Account Type", value = profile.userType, icon = Icons.Default.Person)
+                        HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+                        ProfileInfoRow(label = "Member Since", value = profile.createdAt.split("T")[0], icon = Icons.Default.Dashboard)
+                    }
+                }
+
+                // 3. KYC Status Section
+                Text("Verification Status", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                KycStatusCard(status = profile.kycStatus)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileInfoRow(label: String, value: String, icon: ImageVector) {
+    ListItem(
+        headlineContent = { Text(label, style = MaterialTheme.typography.labelMedium, color = Color.Gray) },
+        supportingContent = { Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold) },
+        leadingContent = { Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp)) }
+    )
+}
+
+@Composable
+fun KycStatusCard(status: String) {
+    val (color, icon, description) = when (status) {
+        "VERIFIED" -> Triple(Color(0xFF2E7D32), Icons.AutoMirrored.Filled.FactCheck, "Your identity has been verified. You can now apply for higher loan limits.")
+        "PENDING" -> Triple(Color(0xFFE65100), Icons.Default.Settings, "Your documents are currently under review by our AI system.")
+        else -> Triple(Color(0xFFC62828), Icons.Default.Lock, "Verification failed or not started. Please complete your KYC to unlock features.")
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = color.copy(alpha = 0.1f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.5f))
+    ) {
+        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(32.dp))
+            Spacer(Modifier.width(16.dp))
+            Column {
+                Text(status, fontWeight = FontWeight.ExtraBold, color = color)
+                Text(description, style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 fun DashboardScreenPreview() {
@@ -358,7 +477,9 @@ fun DashboardScreenPreview() {
             onNavigateToKyc = {},
             onNavigateToNewLoan = {},
             onEvaluateClick = {},
-            onLogout = {}
+            onLogout = {},
+            onLoadProfile = {},
+            profileState = Resource.Loading()
         )
     }
 }

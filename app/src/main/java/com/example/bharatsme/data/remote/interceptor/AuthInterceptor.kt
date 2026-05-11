@@ -1,5 +1,6 @@
 package com.example.bharatsme.data.remote.interceptor
 
+import android.util.Log
 import com.example.bharatsme.data.local.TokenManager
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
@@ -13,11 +14,12 @@ class AuthInterceptor(private val tokenManager: TokenManager) : Interceptor {
         val token = runBlocking {
             tokenManager.getToken().firstOrNull()
         }
+        Log.d("AUTH_DEBUG", "Attaching Token: Bearer ${token?.take(10)}...")
 
         val request = chain.request().newBuilder()
 
         // If token isn't null, add it to the headers
-        token?.let {
+        token?.takeIf { it.isNotBlank() }?.let {
             request.addHeader("Authorization", "Bearer $it")
         }
 

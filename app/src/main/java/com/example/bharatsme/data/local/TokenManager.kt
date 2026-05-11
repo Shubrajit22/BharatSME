@@ -24,6 +24,10 @@ class TokenManager(private val context: Context) {
         }
     }
 
+    suspend fun clearToken() {
+        context.dataStore.edit { it.remove(TOKEN_KEY) }
+    }
+
     // Delete token (for Logout)
     suspend fun deleteToken() {
         context.dataStore.edit { it.remove(TOKEN_KEY) }
