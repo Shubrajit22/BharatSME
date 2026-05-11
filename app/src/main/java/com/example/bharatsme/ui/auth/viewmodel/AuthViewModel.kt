@@ -1,4 +1,4 @@
-package com.example.bharatsme.ui.auth
+package com.example.bharatsme.ui.auth.viewmodel
 
 import android.content.Context
 import android.util.Log

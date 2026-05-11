@@ -1,4 +1,4 @@
-package com.example.bharatsme.ui.dashboard
+package com.example.bharatsme.ui.dashboard.viewmodel
 
 import android.util.Log
 import androidx.compose.runtime.State

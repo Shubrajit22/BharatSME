@@ -1,4 +1,4 @@
-package com.example.bharatsme.ui.kyc
+package com.example.bharatsme.ui.kyc.viewmodel
 
 import android.net.Uri
 import androidx.compose.runtime.State
@@ -31,20 +31,32 @@ class KycViewModel(private val repository: KycRepository) : ViewModel() {
     var selfieUri = mutableStateOf<Uri?>(null)
     var signatureUri = mutableStateOf<Uri?>(null)
 
+    var userType = mutableStateOf("INDIVIDUAL")
+
     fun moveToNextStep() {
-        val nextIndex = _currentStep.value.ordinal + 1
-        if (nextIndex < KycStep.entries.size) {
-            _currentStep.value = KycStep.entries[nextIndex]
-            _kycState.value = null // Clear state for the next step
+        val nextStep = when (_currentStep.value) {
+            KycStep.PAN -> {
+                if (userType.value == "SME") KycStep.BIOMETRICS else KycStep.AADHAAR
+            }
+            else -> {
+                val nextIndex = _currentStep.value.ordinal + 1
+                if (nextIndex < KycStep.entries.size) KycStep.entries[nextIndex] else _currentStep.value
+            }
         }
+        _currentStep.value = nextStep
     }
 
     fun moveBackStep() {
-        val currentIndex = _currentStep.value.ordinal
-        if (currentIndex > 0) {
-            _currentStep.value = KycStep.entries[currentIndex - 1]
-            _kycState.value = null
+        val prevStep = when (_currentStep.value) {
+            KycStep.BIOMETRICS -> {
+                if (userType.value == "SME") KycStep.PAN else KycStep.AADHAAR
+            }
+            else -> {
+                val prevIndex = _currentStep.value.ordinal - 1
+                if (prevIndex >= 0) KycStep.entries[prevIndex] else _currentStep.value
+            }
         }
+        _currentStep.value = prevStep
     }
 
     // --- 1. Init KYC (Updated to handle NetworkResponse) ---

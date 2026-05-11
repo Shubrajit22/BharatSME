@@ -15,11 +15,11 @@ import com.example.bharatsme.data.repository.AuthRepository
 import com.example.bharatsme.data.repository.KycRepository
 import com.example.bharatsme.data.repository.LoanRepository
 import com.example.bharatsme.ui.auth.AuthScreen
-import com.example.bharatsme.ui.auth.AuthViewModel
+import com.example.bharatsme.ui.auth.viewmodel.AuthViewModel
 import com.example.bharatsme.ui.dashboard.DashboardScreen
-import com.example.bharatsme.ui.dashboard.DashboardViewModel
+import com.example.bharatsme.ui.dashboard.viewmodel.DashboardViewModel
 import com.example.bharatsme.ui.kyc.KycScreen
-import com.example.bharatsme.ui.kyc.KycViewModel
+import com.example.bharatsme.ui.kyc.viewmodel.KycViewModel
 import com.example.bharatsme.ui.loans.LoanViewModel
 import com.example.bharatsme.ui.loans.NewLoanScreen
 import kotlinx.coroutines.launch

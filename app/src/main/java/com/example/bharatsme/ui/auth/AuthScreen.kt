@@ -1,9 +1,7 @@
 package com.example.bharatsme.ui.auth
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -40,6 +38,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.bharatsme.ui.auth.components.AuthToggleButton
+import com.example.bharatsme.ui.auth.viewmodel.AuthMode
+import com.example.bharatsme.ui.auth.viewmodel.AuthViewModel
+import com.example.bharatsme.ui.auth.viewmodel.UserType
 import com.example.bharatsme.ui.theme.BharatSMETheme
 import com.example.bharatsme.util.Resource
 
@@ -235,23 +237,7 @@ fun AuthContent(
     }
 }
 
-@Composable
-fun AuthToggleButton(text: String, isSelected: Boolean, modifier: Modifier, onClick: () -> Unit) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(if (isSelected) MaterialTheme.colorScheme.primary else Color.Transparent)
-            .clickable { onClick() }
-            .padding(vertical = 12.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = text,
-            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold
-        )
-    }
-}
+
 
 @Preview(showBackground = true, name = "Login Mode")
 @Composable

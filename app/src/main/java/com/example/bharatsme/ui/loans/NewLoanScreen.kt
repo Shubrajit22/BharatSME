@@ -29,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
-import com.example.bharatsme.ui.components.SmeDropdown
+import com.example.bharatsme.ui.auth.components.SmeDropdown
 import com.example.bharatsme.util.Resource
 
 @OptIn(ExperimentalMaterial3Api::class)
